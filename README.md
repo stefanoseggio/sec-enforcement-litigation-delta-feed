@@ -13,10 +13,12 @@
 ## Run it now
 
 <p align="center">
-  <a href="https://console.apify.com/actors/EDhT9Mvrdm2hzTECA">
-    <img alt="Run this Actor on Apify" src="https://img.shields.io/badge/Run%20this%20Actor-Apify%20Console-00A98F?style=for-the-badge&logo=apify&logoColor=white" />
+  <a href="https://apify.com/stefano_seggio/sec-enforcement-litigation-delta-feed">
+    <img alt="Run this Actor on Apify" src="https://img.shields.io/badge/Run%20this%20Actor-Apify%20Store-00A98F?style=for-the-badge&logo=apify&logoColor=white" />
   </a>
 </p>
+
+Live and public at [apify.com/stefano_seggio/sec-enforcement-litigation-delta-feed](https://apify.com/stefano_seggio/sec-enforcement-litigation-delta-feed). Owner console: [console.apify.com/actors/EDhT9Mvrdm2hzTECA](https://console.apify.com/actors/EDhT9Mvrdm2hzTECA).
 
 This Actor is currently runnable via its private [Apify Console link](https://console.apify.com/actors/EDhT9Mvrdm2hzTECA); once published to the Apify Store it will also be publicly runnable at [apify.com/stefano_seggio/sec-enforcement-litigation-delta-feed](https://apify.com/stefano_seggio/sec-enforcement-litigation-delta-feed).
 
