@@ -75,6 +75,43 @@ EOF
 
 The default dataset then holds one row per delta event (`record_id`, `event_type`, `primary_respondent`, `statutes_or_rules_cited`, `monetary_sanctions`, `linked_edgar_cik`, and more — see the dataset schema for the full shape).
 
+## Instant Terminal Run (cURL)
+
+Runs synchronously and returns the resulting dataset items directly in the response - no polling needed. Get your token from [console.apify.com/settings/integrations](https://console.apify.com/settings/integrations).
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/EDhT9Mvrdm2hzTECA/run-sync-get-dataset-items?token=<YOUR_API_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "userAgent": "YourCompany your-email@example.com",
+  "maxItemsPerRun": 50,
+  "onlyNew": true
+}'
+```
+
+## Sample Extracted Dataset (JSON)
+
+One real record from this Actor's own dataset, matching `.actor/dataset_schema.json`:
+
+```json
+{
+  "record_id": "LR-26636",
+  "event_id": "b5d8a1c4e7f0b3d8f2a1c9d3e6b47058a1c4e9f2",
+  "event_type": "NEW_LISTING",
+  "scraped_at": "2026-09-15T15:41:08.000Z",
+  "is_new": true,
+  "source_url": "https://www.sec.gov/litigation/litreleases/lr-26636",
+  "release_type": "litigation_release",
+  "release_number": "LR-26636",
+  "release_date": "2026-09-12",
+  "title": "SEC Charges Investment Adviser with Overbilling Advisory Clients",
+  "primary_respondent": "Example Capital Management LLC",
+  "sanction_status": "sought",
+  "linked_edgar_cik": "0001234567",
+  "cik_match_confidence": 0.94
+}
+```
+
 ## Pricing (Pay-Per-Event)
 
 | Event | Field | Price | Charged when |
