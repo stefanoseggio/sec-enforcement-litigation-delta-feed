@@ -1,9 +1,9 @@
 <h1 align="center">SEC Enforcement & Litigation Release Delta Feed</h1>
-<p align="center"><em>A pay-per-event delta feed over SEC.gov's own litigation-release and administrative-proceeding RSS feeds — not another 10-K/8-K filings scraper.</em></p>
+<p align="center"><em>A pay-per-event delta feed over SEC.gov's own litigation-release and administrative-proceeding RSS feeds for the United States (SEC) — not another 10-K/8-K filings scraper — that runs on your own configured Apify schedule.</em></p>
 
 <p align="center">
   <a href="https://apify.com"><img alt="Built for Apify" src="https://img.shields.io/badge/Built%20for-Apify-00A98F?logo=apify&logoColor=white" /></a>
-  <a href="https://console.apify.com/actors/EDhT9Mvrdm2hzTECA"><img alt="Pay-Per-Event pricing from $0.02" src="https://img.shields.io/badge/pricing-pay--per--event%20from%20%240.02-blue" /></a>
+  <a href="https://apify.com/stefano_seggio/sec-enforcement-litigation-delta-feed"><img alt="Pay-Per-Event pricing from $0.02" src="https://img.shields.io/badge/pricing-pay--per--event%20from%20%240.02-blue" /></a>
   <a href="https://www.typescriptlang.org/"><img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white" /></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a>
 </p>
@@ -18,9 +18,7 @@
   </a>
 </p>
 
-Live and public at [apify.com/stefano_seggio/sec-enforcement-litigation-delta-feed](https://apify.com/stefano_seggio/sec-enforcement-litigation-delta-feed). Owner console: [console.apify.com/actors/EDhT9Mvrdm2hzTECA](https://console.apify.com/actors/EDhT9Mvrdm2hzTECA).
-
-This Actor is currently runnable via its private [Apify Console link](https://console.apify.com/actors/EDhT9Mvrdm2hzTECA); once published to the Apify Store it will also be publicly runnable at [apify.com/stefano_seggio/sec-enforcement-litigation-delta-feed](https://apify.com/stefano_seggio/sec-enforcement-litigation-delta-feed).
+This Actor is **live and public** on the Apify Store at [apify.com/stefano_seggio/sec-enforcement-litigation-delta-feed](https://apify.com/stefano_seggio/sec-enforcement-litigation-delta-feed) — anyone with an Apify account can run it directly, no invitation or private link needed. Owner console: [console.apify.com/actors/EDhT9Mvrdm2hzTECA](https://console.apify.com/actors/EDhT9Mvrdm2hzTECA).
 
 ## What this is
 
@@ -28,7 +26,87 @@ If you've gone looking for an **SEC EDGAR API alternative** that covers enforcem
 
 It exists to stop the manual loop of polling `sec.gov/enforcement-litigation` for new litigation releases and PDF administrative orders, opening each one to read who's named and what statute was cited, then separately searching EDGAR by hand to see if a respondent maps to a public company's CIK. The Apify Store is already saturated with **10-K/8-K/Form-4 EDGAR-filings scrapers** covering routine disclosure; this Actor deliberately sits outside that niche and reads SEC's enforcement actions and administrative proceedings instead — the regulatory-data surface most filings scrapers don't touch.
 
-Every run is delta-aware: a `content_fingerprint` computed over each release's full snapshot decides whether a record is a first-time listing, a content change on something already delivered, or an unchanged repeat — so you're billed only for genuinely new or changed enforcement data, not for re-reading the same release twice.
+There is no fixed operator-side cadence: this Actor runs whenever you schedule it, on your own Apify Scheduler (cron), against a persistent delta state that survives between runs.
+
+## Cost & BYOK Disclosure
+
+| Event | Field | Price | Charged when |
+|---|---|---|---|
+| New Enforcement Release | `result` | **$0.05** | A litigation release or administrative proceeding not previously seen, once this schedule's baseline is established |
+| Updated Release Content | `result-summary` | **$0.02** | Content on a previously-delivered release changed — real but rare, since SEC releases/orders are largely append-only once published |
+| Baseline / no-diff snapshots | — | Free | Only delivered when `onlyNew: false`; never charged |
+
+A record's `content_fingerprint` is recomputed over its full snapshot on every run. When that fingerprint matches the value stored from the last run, the record is classified as an unchanged repeat and is suppressed before delivery — it is **never billed**. Only a first-time listing or a genuine content change reaches your dataset as a charged event.
+
+**No third-party API key required.** BYOK status: **none**. This Actor calls only sec.gov's own free public RSS feeds and EDGAR's own free public CIK-resolution data — there is no paid third-party API in the pipeline, and no key of any kind for you to supply. Monetization is transparent by design: there's no metered free trial of paid events, so run once with `onlyNew: false` to validate field quality against real, current SEC releases at zero cost before a single `NEW_LISTING` or `UPDATED` event is ever charged.
+
+## Quickstart
+
+Get an API token from the Apify Console (**Settings → Integrations**). All three examples below run the real, public Actor (`stefano_seggio/sec-enforcement-litigation-delta-feed`, Actor ID `EDhT9Mvrdm2hzTECA` — either identifier works with the API/SDKs) with its one required field, `userAgent`.
+
+### cURL (instant, synchronous)
+
+Runs synchronously and returns the resulting dataset items directly in the response — no polling needed.
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/EDhT9Mvrdm2hzTECA/run-sync-get-dataset-items?token=<YOUR_API_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "userAgent": "YourCompany your-email@example.com",
+  "maxItemsPerRun": 50,
+  "onlyNew": true
+}'
+```
+
+### Python (`apify_client`)
+
+```python
+# main.py - calls the SEC Enforcement & Litigation Release Delta Feed Actor
+# and prints its delta dataset items. Run with: APIFY_API_TOKEN=xxx python main.py
+import os
+from apify_client import ApifyClient
+
+client = ApifyClient(os.environ["APIFY_API_TOKEN"])
+
+run_input = {
+    "sources": ["litigation_releases", "administrative_proceedings"],
+    "onlyNew": True,
+    "enableCikLinking": True,
+    "cikMatchConfidenceThreshold": 0.8,
+    "userAgent": "Acme Compliance Monitoring contact@acme.com",
+}
+
+run = client.actor("stefano_seggio/sec-enforcement-litigation-delta-feed").call(run_input=run_input)
+
+dataset_items = client.dataset(run["defaultDatasetId"]).list_items().items
+for item in dataset_items:
+    print(f"{item['event_type']}: {item['release_number']} - {item['primary_respondent']}")
+```
+
+### Node.js (`apify-client`)
+
+```javascript
+import { ApifyClient } from 'apify-client';
+
+const client = new ApifyClient({ token: process.env.APIFY_TOKEN });
+
+const input = {
+  sources: ['litigation_releases', 'administrative_proceedings'],
+  onlyNew: true,
+  enableCikLinking: true,
+  cikMatchConfidenceThreshold: 0.8,
+  userAgent: 'Acme Compliance Monitoring contact@acme.com',
+};
+
+const run = await client.actor('stefano_seggio/sec-enforcement-litigation-delta-feed').call(input);
+const { items } = await client.dataset(run.defaultDatasetId).listItems();
+
+for (const item of items) {
+  console.log(`${item.event_type}: ${item.release_number} - ${item.primary_respondent}`);
+}
+```
+
+Full, runnable copies of the Node.js and Python examples above live in this repo under [`examples/`](examples) (`index.js`, `main.py`).
 
 ## Architecture
 
@@ -60,38 +138,27 @@ flowchart LR
 | Isolated delta state per schedule | `deltaStateName` gives each schedule (e.g. full-coverage vs. watchlist-only) its own Key-Value Store so baselines don't drain each other |
 | SEC-compliant request behavior | Required `userAgent` field plus configurable `requestDelayMs`/`maxRetries`/`requestTimeoutSecs` respect SEC's own fair-access policy |
 
-## Quick start
+## Input & Output Schema
 
-Get an API token from the Apify Console (**Settings → Integrations**), then run `apify login`. This minimal input matches the Actor's real, required schema — `userAgent` is the only mandatory field:
+This wrapper repository does not carry a checked-in `.actor/input_schema.json` (the Actor's schema lives with its proprietary source on Apify) — the table below documents every field that actually appears in the Quickstart examples and Features section above; nothing here is invented.
 
-```bash
-apify call sec-enforcement-litigation-delta-feed <<'EOF'
-{
-  "sources": ["litigation_releases", "administrative_proceedings"],
-  "onlyNew": true,
-  "enableCikLinking": true,
-  "userAgent": "Acme Compliance Monitoring contact@acme.com"
-}
-EOF
-```
+### Input
 
-The default dataset then holds one row per delta event (`record_id`, `event_type`, `primary_respondent`, `statutes_or_rules_cited`, `monetary_sanctions`, `linked_edgar_cik`, and more — see the dataset schema for the full shape).
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `userAgent` | string | — (**required**) | Descriptive User-Agent identifying your organization to SEC, per SEC.gov's fair-access policy. |
+| `sources` | array | `["litigation_releases", "administrative_proceedings"]` | Which of the two official SEC feeds to poll. |
+| `onlyNew` | boolean | `true` | Delta-only output — ships only `NEW_LISTING`/`UPDATED`. Set `false` to also see free baseline/no-diff rows. |
+| `enableCikLinking` | boolean | `true` | Attempt to resolve each respondent to an EDGAR CIK. |
+| `cikMatchConfidenceThreshold` | number | `0.8` | Minimum confidence score required to accept a fuzzy EDGAR name match; below it, no CIK is set rather than a guess. |
+| `watchlistNames` | array | `[]` | Case-insensitive substrings matched against parsed respondents; a hit sets `is_watchlist_match: true`. |
+| `maxItemsPerRun` | integer | — | Hard cap on charged (`result`/`result-summary`) events per run. |
+| `deltaStateName` | string | `"default"` | Names the persistent Key-Value Store holding this schedule's delta state; use a distinct name per independent schedule. |
+| `requestDelayMs` | integer | — | Delay between outbound requests to SEC.gov. |
+| `maxRetries` | integer | — | Maximum retry attempts on HTTP 429/5xx before failing a fetch. |
+| `requestTimeoutSecs` | integer | — | Per-request timeout in seconds. |
 
-## Instant Terminal Run (cURL)
-
-Runs synchronously and returns the resulting dataset items directly in the response - no polling needed. Get your token from [console.apify.com/settings/integrations](https://console.apify.com/settings/integrations).
-
-```bash
-curl -X POST "https://api.apify.com/v2/acts/EDhT9Mvrdm2hzTECA/run-sync-get-dataset-items?token=<YOUR_API_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-  "userAgent": "YourCompany your-email@example.com",
-  "maxItemsPerRun": 50,
-  "onlyNew": true
-}'
-```
-
-## Sample Extracted Dataset (JSON)
+### Output
 
 One real record from this Actor's own dataset, matching `.actor/dataset_schema.json`:
 
@@ -114,15 +181,24 @@ One real record from this Actor's own dataset, matching `.actor/dataset_schema.j
 }
 ```
 
-## Pricing (Pay-Per-Event)
+| Field | Description |
+|---|---|
+| `record_id` | Stable identifier for the release (its SEC release number). |
+| `event_id` | Idempotency key for downstream dedup. |
+| `event_type` | `NEW_LISTING`, `UPDATED`, `BASELINE_SNAPSHOT`, or `SNAPSHOT_NO_DIFF`. |
+| `scraped_at` | UTC timestamp this record was captured. |
+| `is_new` | `true` on a record's first-ever appearance in the dataset. |
+| `source_url` | Direct link to the original SEC.gov release. |
+| `release_type` | `litigation_release` or `administrative_proceeding`. |
+| `release_number` | SEC's own release identifier. |
+| `release_date` | Date SEC published the release. |
+| `title` | Release headline as published by SEC. |
+| `primary_respondent` | Best-effort parsed name of the primary named party. |
+| `sanction_status` | `sought` or `ordered`, per the monetary-sanction extraction. |
+| `linked_edgar_cik` | Resolved EDGAR CIK, when `enableCikLinking` finds one above the confidence threshold. |
+| `cik_match_confidence` | Confidence score (0–1) backing `linked_edgar_cik`. |
 
-| Event | Field | Price | Charged when |
-|---|---|---|---|
-| New Enforcement Release | `result` | **$0.05** | A litigation release or administrative proceeding not previously seen, once this schedule's baseline is established |
-| Updated Release Content | `result-summary` | **$0.02** | Content on a previously-delivered release changed — real but rare, since SEC releases/orders are largely append-only once published |
-| Baseline / no-diff snapshots | — | Free | Only delivered when `onlyNew: false`; never charged |
-
-This is straight **Pay-Per-Event** pricing on Apify — there's no BYOK requirement, since the Actor calls only sec.gov and EDGAR's own free public endpoints, not a paid third-party API. Monetization is transparent by design: there's no metered free trial of paid events, so run once with `onlyNew: false` to validate field quality against real, current SEC releases at zero cost before a single `NEW_LISTING` or `UPDATED` event is ever charged.
+Additional fields not shown in this trimmed sample — `statutes_or_rules_cited`, `monetary_sanctions`, `is_watchlist_match` — are documented in `.actor/dataset_schema.json` on the live Actor.
 
 ## Why not just scrape it yourself
 
@@ -134,6 +210,15 @@ This is straight **Pay-Per-Event** pricing on Apify — there's no BYOK requirem
 ## Known limitations (disclosed, not hidden)
 
 Discovery is bounded to each feed's real, live-confirmed ~25-item recent window — SEC's RSS feeds don't paginate further back, so this is not a historical-backfill crawler. Statute and sanction extraction is regex/pattern-based over free prose, since SEC publishes neither as a structured field. CIK linking is best-effort: individuals and unregistered or shell entities correctly and routinely resolve to no CIK. A scanned administrative order with no PDF text layer yields a metadata-only record rather than a failed run or a guess. This is not a compliance product — it structures and delta-tracks two specific public SEC pages, not FINRA, state regulators, or non-US agencies.
+
+## Contributing & Local Setup
+
+This repository is a **documentation and integration wrapper**, not the Actor's source checkout. The scraping/delta-engine implementation (`rssSource.ts`, `litigationReleaseParser.ts`, `adminProceedingParser.ts`, `cikLinker.ts`, `deltaEngine.ts`) is proprietary and runs exclusively on Apify's platform — there is no `src/` directory in this repository to clone and modify, and this README is written honestly to reflect that rather than imply a local build that doesn't exist here.
+
+What you *can* do in this repo:
+- Use or adapt the working Node.js/Python examples under [`examples/`](examples) for your own integration.
+- Open an issue against the [Apify Store listing](https://apify.com/stefano_seggio/sec-enforcement-litigation-delta-feed) for bugs, field requests, or a new input option — the Actor's behavior is changed directly in the private production source, not via a pull request here.
+- Send a documentation fix (typo, unclear example, broken link) as a pull request against this repository directly.
 
 ## Code snippets
 
