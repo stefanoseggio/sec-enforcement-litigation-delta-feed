@@ -37,6 +37,7 @@ There is no fixed operator-side cadence: this Actor runs whenever you schedule i
 |---|---|---|---|
 | New Enforcement Release | `result` | **$0.05** | A litigation release or administrative proceeding not previously seen, once this schedule's baseline is established |
 | Updated Release Content | `result-summary` | **$0.02** | Content on a previously-delivered release changed — real but rare, since SEC releases/orders are largely append-only once published |
+| Actor start | — | **$0.00005/GB-memory** | Once per run, regardless of how many (if any) records are delivered |
 | Baseline / no-diff snapshots | — | Free | Only delivered when `onlyNew: false`; never charged |
 
 A record's `content_fingerprint` is recomputed over its full snapshot on every run. When that fingerprint matches the value stored from the last run, the record is classified as an unchanged repeat and is suppressed before delivery — it is **never billed**. Only a first-time listing or a genuine content change reaches your dataset as a charged event.
