@@ -14,6 +14,9 @@
 
 <p align="center">
   <a href="https://apify.com/stefano_seggio/sec-enforcement-litigation-delta-feed">
+    <img alt="Run on Apify Store" src="https://img.shields.io/badge/Run%20on-Apify%20Store-00A98F?style=for-the-badge&logo=apify&logoColor=white" />
+  </a>
+  <a href="https://apify.com/stefano_seggio/sec-enforcement-litigation-delta-feed">
     <img alt="Run this Actor on Apify" src="https://img.shields.io/badge/Run%20this%20Actor-Apify%20Store-00A98F?style=for-the-badge&logo=apify&logoColor=white" />
   </a>
 </p>
@@ -108,6 +111,61 @@ for (const item of items) {
 
 Full, runnable copies of the Node.js and Python examples above live in this repo under [`examples/`](examples) (`index.js`, `main.py`).
 
+## Use this from Claude Desktop, Cursor, or Windsurf (via MCP)
+
+This Actor is also reachable as an MCP server through Apify's own hosted `@apify/actors-mcp-server`, scoped to just this Actor via a `?tools=` query string - not the full Delta Registry fleet.
+
+**Claude Desktop** (via the `mcp-remote` stdio bridge):
+
+```json
+{
+  "mcpServers": {
+    "delta-registry-sec-enforcement-litigation-delta-feed": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.apify.com/?tools=stefano_seggio/sec-enforcement-litigation-delta-feed",
+        "--header",
+        "Authorization: Bearer ${APIFY_TOKEN}"
+      ]
+    }
+  }
+}
+```
+
+**Cursor** (native HTTP transport):
+
+```json
+{
+  "mcpServers": {
+    "delta-registry-sec-enforcement-litigation-delta-feed": {
+      "url": "https://mcp.apify.com/?tools=stefano_seggio/sec-enforcement-litigation-delta-feed",
+      "headers": {
+        "Authorization": "Bearer ${APIFY_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+**Windsurf** (uses `serverUrl`, not `url`):
+
+```json
+{
+  "mcpServers": {
+    "delta-registry-sec-enforcement-litigation-delta-feed": {
+      "serverUrl": "https://mcp.apify.com/?tools=stefano_seggio/sec-enforcement-litigation-delta-feed",
+      "headers": {
+        "Authorization": "Bearer ${env:APIFY_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+Replace `${APIFY_TOKEN}` with a real token from [Apify Console → Settings → Integrations](https://console.apify.com/settings/integrations). Note that `mcp-remote` does not expand shell environment variables inside the JSON string itself - paste the literal token and keep this file out of version control; Windsurf's `${env:APIFY_TOKEN}` genuinely does resolve from your environment. For the full 28-actor Delta Registry MCP configuration across all three clients, see [MCP_INTEGRATION.md](https://github.com/stefanoseggio/delta-registry-website/blob/main/MCP_INTEGRATION.md).
+
 ## Architecture
 
 ```mermaid
@@ -146,17 +204,18 @@ This wrapper repository does not carry a checked-in `.actor/input_schema.json` (
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `userAgent` | string | — (**required**) | Descriptive User-Agent identifying your organization to SEC, per SEC.gov's fair-access policy. |
+| `userAgent` | string | `"DeltaRegistrySECMonitor/1.0 (+https://apify.com/stefano_seggio/sec-enforcement-litigation-delta-feed)"` (**required**) | Descriptive User-Agent identifying your organization to SEC, per SEC.gov's fair-access policy. |
 | `sources` | array | `["litigation_releases", "administrative_proceedings"]` | Which of the two official SEC feeds to poll. |
 | `onlyNew` | boolean | `true` | Delta-only output — ships only `NEW_LISTING`/`UPDATED`. Set `false` to also see free baseline/no-diff rows. |
 | `enableCikLinking` | boolean | `true` | Attempt to resolve each respondent to an EDGAR CIK. |
 | `cikMatchConfidenceThreshold` | number | `0.8` | Minimum confidence score required to accept a fuzzy EDGAR name match; below it, no CIK is set rather than a guess. |
 | `watchlistNames` | array | `[]` | Case-insensitive substrings matched against parsed respondents; a hit sets `is_watchlist_match: true`. |
-| `maxItemsPerRun` | integer | — | Hard cap on charged (`result`/`result-summary`) events per run. |
+| `maxItemsPerRun` | integer | `0` (unlimited) | Hard cap on charged (`result`/`result-summary`) events per run. |
 | `deltaStateName` | string | `"default"` | Names the persistent Key-Value Store holding this schedule's delta state; use a distinct name per independent schedule. |
-| `requestDelayMs` | integer | — | Delay between outbound requests to SEC.gov. |
-| `maxRetries` | integer | — | Maximum retry attempts on HTTP 429/5xx before failing a fetch. |
-| `requestTimeoutSecs` | integer | — | Per-request timeout in seconds. |
+| `resetState` | boolean | `false` | Clears this schedule's stored seen-release state before the run, so the next walk re-baselines from scratch. |
+| `requestDelayMs` | integer | `750` | Delay between outbound requests to SEC.gov. |
+| `maxRetries` | integer | `4` | Maximum retry attempts on HTTP 429/5xx before failing a fetch. |
+| `requestTimeoutSecs` | integer | `30` | Per-request timeout in seconds. |
 
 ### Output
 
@@ -198,7 +257,7 @@ One real record from this Actor's own dataset, matching `.actor/dataset_schema.j
 | `linked_edgar_cik` | Resolved EDGAR CIK, when `enableCikLinking` finds one above the confidence threshold. |
 | `cik_match_confidence` | Confidence score (0–1) backing `linked_edgar_cik`. |
 
-Additional fields not shown in this trimmed sample — `statutes_or_rules_cited`, `monetary_sanctions`, `is_watchlist_match` — are documented in `.actor/dataset_schema.json` on the live Actor.
+Additional fields not shown in this trimmed sample — `respondents`, `court_or_forum`, `docket_or_case_number`, `statutes_or_rules_cited`, `monetary_sanctions`, `edgar_company_name`, `edgar_former_names`, `cik_match_method`, `cik_match_reason`, `summary_text`, `is_watchlist_match`, `changed_fields`, and `content_fingerprint` — are documented in `.actor/dataset_schema.json` on the live Actor.
 
 ## Why not just scrape it yourself
 
